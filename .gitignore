@@ -1,0 +1,5 @@
+parse_sample
+pkg
+plugin
+.golangci.yml
+*.so
