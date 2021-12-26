@@ -25,6 +25,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		(*ast.CallExpr)(nil),
 		(*ast.ReturnStmt)(nil),
 		(*ast.SendStmt)(nil),
+		(*ast.CompositeLit)(nil),
 	}
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
 		switch n := node.(type) {
@@ -36,6 +37,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		case *ast.SendStmt:
 			processSendStmt(pass, n)
+
+		case *ast.CompositeLit:
+			processCompositeLit(pass, n)
 		}
 	})
 
@@ -47,63 +51,74 @@ func processCallExpr(pass *analysis.Pass, call *ast.CallExpr) {
 	if fn == nil {
 		return
 	}
-
 	for _, arg := range call.Args {
-		typ := pass.TypesInfo.Types[arg].Type
-
-		if exprIsLintTarget(pass.Pkg.Path(), arg, typ) {
-			msg := fmt.Sprintf("passing naked literal to parameter of Defined Type %q", typ.String())
-			pass.Report(analysis.Diagnostic{
-				Pos:     arg.Pos(),
-				End:     arg.End(),
-				Message: msg,
-			})
-		}
+		checkAndReport(pass, arg, "passing naked literal to parameter of Defined Type %q")
 	}
 }
 
 func processReturnStmt(pass *analysis.Pass, ret *ast.ReturnStmt) {
 	for _, res := range ret.Results {
-		typ := pass.TypesInfo.Types[res].Type
-
-		if exprIsLintTarget(pass.Pkg.Path(), res, typ) {
-			msg := fmt.Sprintf("returning naked literal as Defiend Type %q", typ.String())
-			pass.Report(analysis.Diagnostic{
-				Pos:     res.Pos(),
-				End:     res.End(),
-				Message: msg,
-			})
-		}
+		checkAndReport(pass, res, "returning naked literal as Defiend Type %q")
 	}
 }
 
 func processSendStmt(pass *analysis.Pass, send *ast.SendStmt) {
-	typ := pass.TypesInfo.Types[send.Value].Type
+	checkAndReport(pass, send.Value, "sending naked literal to channel of Defiend Type %q")
+}
 
-	if exprIsLintTarget(pass.Pkg.Path(), send.Value, typ) {
-		msg := fmt.Sprintf("sending naked literal to channel of Defiend Type %q", typ.String())
+func processCompositeLit(pass *analysis.Pass, comp *ast.CompositeLit) {
+	for _, elt := range comp.Elts {
+		switch e := elt.(type) {
+		case *ast.KeyValueExpr: // elt is "key: value" form (element of map/struct)
+			checkAndReport(pass, e.Key, "using naked literal as composite literal's element key of Defined Type %q")
+			checkAndReport(pass, e.Value, "using naked literal as composite literal's element value of Defined Type %q")
+
+		default: // elt is not "key: value" form (element of slice/array)
+			checkAndReport(pass, e, "using naked literal as composite literal's element of Defined Type %q")
+		}
+	}
+}
+
+// check if the expression is target of warning and report problems.
+func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
+	exprPkgPath := pass.Pkg.Path()
+	declType := pass.TypesInfo.Types[expr].Type
+
+	namedTyp, isNamed := declType.(*types.Named)
+	if !isNamed {
+		return
+	}
+	if !isBasicOrParenedBasic(expr) {
+		return
+	}
+	if _, isUnderlyingBasic := declType.Underlying().(*types.Basic); !isUnderlyingBasic {
+		return
+	}
+	// For now, (1) the type of expr is declared as Defined Type, (2) the expr is a literal of basic type, and (3) the Underlying Type of declared expr type is basic type
+
+	// expr is target of warning if the declared type of expr is *not* "external package private type"
+	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == exprPkgPath {
 		pass.Report(analysis.Diagnostic{
-			Pos:     send.Value.Pos(),
-			End:     send.Value.End(),
-			Message: msg,
+			Pos:     expr.Pos(),
+			End:     expr.End(),
+			Message: fmt.Sprintf(msgfmt, declType.String()),
 		})
 	}
 }
 
-// check if the expression is target of warning
-func exprIsLintTarget(callerPkgPath string, expr ast.Expr, declType types.Type) bool {
-	namedTyp, isNamed := declType.(*types.Named)
-	if !isNamed {
-		return false
-	}
-	if _, isLiteral := expr.(*ast.BasicLit); !isLiteral {
-		return false
-	}
-	if _, isUnderlyingBasic := declType.Underlying().(*types.Basic); !isUnderlyingBasic {
-		return false
-	}
-	// For now, (1) the type of expr is declared as Defined Type, (2) the expr is a literal of basic type, and (3) the Underlying Type of declared expr type is basic type
+func isBasicOrParenedBasic(expr ast.Expr) bool {
+	currExpr := expr
+	for {
+		switch e := currExpr.(type) {
+		case *ast.BasicLit:
+			return true
 
-	// arg is target of warning if the type of arg is *not* "external package private type"
-	return namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == callerPkgPath
+		case *ast.ParenExpr:
+			currExpr = e.X
+			// continue
+
+		default:
+			return false
+		}
+	}
 }
