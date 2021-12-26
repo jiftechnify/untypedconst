@@ -12,11 +12,10 @@ import (
 )
 
 var Analyzer = &analysis.Analyzer{
-	Name:             "nakedliteral",
-	Doc:              "checks for naked literal passed to functions that requries values of the specific defined type",
-	Run:              run,
-	RunDespiteErrors: true,
-	Requires:         []*analysis.Analyzer{inspect.Analyzer},
+	Name:     "nakedliteral",
+	Doc:      "checks if naked (untyped) literal is used as value of Defined Type",
+	Run:      run,
+	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
@@ -26,7 +25,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		(*ast.ReturnStmt)(nil),
 		(*ast.SendStmt)(nil),
 		(*ast.CompositeLit)(nil),
+		(*ast.IndexExpr)(nil),
 	}
+
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
 		switch n := node.(type) {
 		case *ast.CallExpr:
@@ -40,9 +41,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		case *ast.CompositeLit:
 			processCompositeLit(pass, n)
+
+		case *ast.IndexExpr:
+			processIndexExpr(pass, n)
 		}
 	})
-
 	return nil, nil
 }
 
@@ -79,7 +82,13 @@ func processCompositeLit(pass *analysis.Pass, comp *ast.CompositeLit) {
 	}
 }
 
-// check if the expression is target of warning and report problems.
+func processIndexExpr(pass *analysis.Pass, idx *ast.IndexExpr) {
+	checkAndReport(pass, idx.Index, "using naked literal for indexing the value whose key type is Defined Type %q")
+}
+
+// check if the expression is target of warning, and report problems.
+//
+// `msgfmt` MUST contain exact one format specifier for string(`%s` or `%q`)
 func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 	exprPkgPath := pass.Pkg.Path()
 	declType := pass.TypesInfo.Types[expr].Type
@@ -94,7 +103,7 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 	if _, isUnderlyingBasic := declType.Underlying().(*types.Basic); !isUnderlyingBasic {
 		return
 	}
-	// For now, (1) the type of expr is declared as Defined Type, (2) the expr is a literal of basic type, and (3) the Underlying Type of declared expr type is basic type
+	// as of this line, (1) the type of expr is declared as Defined Type, (2) the expr is a literal of basic type, and (3) the Underlying Type of declared expr type is basic type
 
 	// expr is target of warning if the declared type of expr is *not* "external package private type"
 	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == exprPkgPath {
