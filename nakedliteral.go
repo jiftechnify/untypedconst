@@ -20,26 +20,25 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	// path of analyzing package
+	pkgPath := pass.Pkg.Path()
 
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	nodeFilter := []ast.Node{
 		(*ast.CallExpr)(nil),
 	}
-
 	inspect.Preorder(nodeFilter, func(n ast.Node) {
 		call := n.(*ast.CallExpr)
+
 		fn, _ := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
 		if fn == nil {
 			return
 		}
+
 		for _, arg := range call.Args {
 			typ := pass.TypesInfo.Types[arg].Type
 
-			_, isNamed := typ.(*types.Named)
-			_, isUnderlyingBasic := typ.Underlying().(*types.Basic)
-			_, isLiteral := arg.(*ast.BasicLit)
-
-			if isNamed && isUnderlyingBasic && isLiteral {
+			if argIsLintTarget(pkgPath, arg, typ) {
 				msg := fmt.Sprintf("passing naked literal to parameter of defined type %q", typ.String())
 				pass.Report(analysis.Diagnostic{
 					Pos:     arg.Pos(),
@@ -50,4 +49,22 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 	return nil, nil
+}
+
+// check if the function argument is target of warning
+func argIsLintTarget(callerPkgPath string, argExpr ast.Expr, argType types.Type) bool {
+	namedTyp, isNamed := argType.(*types.Named)
+	if !isNamed {
+		return false
+	}
+	if _, isLiteral := argExpr.(*ast.BasicLit); !isLiteral {
+		return false
+	}
+	if _, isUnderlyingBasic := argType.Underlying().(*types.Basic); !isUnderlyingBasic {
+		return false
+	}
+	// For now, (1) the type of func arg is Defined Type, (2) the arg is a literal of basic type, and (3) the Underlying Type of arg type is basic type
+
+	// arg is target of warning if the type of arg is *not* "external package private type"
+	return namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == callerPkgPath
 }
