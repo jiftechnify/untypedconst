@@ -24,6 +24,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	nodeFilter := []ast.Node{
 		(*ast.CallExpr)(nil),
 		(*ast.ReturnStmt)(nil),
+		(*ast.SendStmt)(nil),
 	}
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
 		switch n := node.(type) {
@@ -32,6 +33,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		case *ast.ReturnStmt:
 			processReturnStmt(pass, n)
+
+		case *ast.SendStmt:
+			processSendStmt(pass, n)
 		}
 	})
 
@@ -70,6 +74,19 @@ func processReturnStmt(pass *analysis.Pass, ret *ast.ReturnStmt) {
 				Message: msg,
 			})
 		}
+	}
+}
+
+func processSendStmt(pass *analysis.Pass, send *ast.SendStmt) {
+	typ := pass.TypesInfo.Types[send.Value].Type
+
+	if exprIsLintTarget(pass.Pkg.Path(), send.Value, typ) {
+		msg := fmt.Sprintf("sending naked literal to channel of Defiend Type %q", typ.String())
+		pass.Report(analysis.Diagnostic{
+			Pos:     send.Value.Pos(),
+			End:     send.Value.End(),
+			Message: msg,
+		})
 	}
 }
 
