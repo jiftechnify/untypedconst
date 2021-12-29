@@ -15,7 +15,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "untypedconst",
-	Doc:      "checks if an untyped constant expressions is used as a value of Defined Type",
+	Doc:      "checks if an untyped constant expressions is used as a value of defined type",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
@@ -57,7 +57,7 @@ func processCallExpr(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 	for _, arg := range call.Args {
-		checkAndReport(pass, arg, "passing naked literal to parameter of Defined Type %q")
+		checkAndReport(pass, arg, "passing naked literal to parameter of defined type %q")
 	}
 }
 
@@ -75,17 +75,17 @@ func processCompositeLit(pass *analysis.Pass, comp *ast.CompositeLit) {
 	for _, elt := range comp.Elts {
 		switch e := elt.(type) {
 		case *ast.KeyValueExpr: // elt is "key: value" form (element of map/struct)
-			checkAndReport(pass, e.Key, "using naked literal as composite literal's element key of Defined Type %q")
-			checkAndReport(pass, e.Value, "using naked literal as composite literal's element value of Defined Type %q")
+			checkAndReport(pass, e.Key, "using naked literal as composite literal's element key of defined type %q")
+			checkAndReport(pass, e.Value, "using naked literal as composite literal's element value of defined type %q")
 
 		default: // elt is not "key: value" form (element of slice/array)
-			checkAndReport(pass, e, "using naked literal as composite literal's element of Defined Type %q")
+			checkAndReport(pass, e, "using naked literal as composite literal's element of defined type %q")
 		}
 	}
 }
 
 func processIndexExpr(pass *analysis.Pass, idx *ast.IndexExpr) {
-	checkAndReport(pass, idx.Index, "using naked literal for indexing the value whose key type is Defined Type %q")
+	checkAndReport(pass, idx.Index, "using naked literal for indexing the value whose key type is defined type %q")
 }
 
 // check if the expression is target of warning, and report problems.

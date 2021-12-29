@@ -1,2 +1,2 @@
 # untypedconst
-An Go linter checks that an literal of basic types is passed as a function argument of defined type.
+An Go linter checks that an untyped constant expression is used as a value of defined type.
