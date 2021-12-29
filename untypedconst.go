@@ -137,13 +137,13 @@ func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
 		if _, isConst := constIdentNames[e.Name]; isConst {
 			return true
 		}
-		// Lookup `types.Object`(type information about entity of code) associated with the ident and check its type.
-		cnst, ok := pass.Pkg.Scope().Lookup(e.Name).(*types.Const)
-		if !ok {
-			// should be unreachable
-			return false
-		}
-		return strings.HasPrefix(cnst.Type().String(), "untyped")
+		// For other identifiers, check if it stands for an untyped constant.
+		return isUntypedConstIdent(pass, e)
+
+	case *ast.SelectorExpr:
+		// It should be qualified identifier of constant in external package.
+		// Check if it stands for is untyped constant.
+		return isUntypedConstIdent(pass, e.Sel)
 
 	case *ast.UnaryExpr:
 		// If an operand is untyped, entire expression is also untyped.
@@ -180,8 +180,8 @@ func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
 		return true
 
 	default:
-		// All other types of expression (index, key-value, selector, slice, star) can't appear in const expr.
-		log.Printf("unexpected node type: %T", e)
+		// All other types of expression (index, key-value, slice, star) can't appear in const expr.
+		log.Printf("unexpected node type: %T (node: %+v)", e, e)
 		return false
 	}
 }
@@ -195,6 +195,15 @@ func unwrapParens(expr ast.Expr) ast.Expr {
 		}
 		currExpr = paren.X
 	}
+}
+
+// Check if `id` stands for an untyped constant.
+func isUntypedConstIdent(pass *analysis.Pass, id *ast.Ident) bool {
+	cnst, ok := pass.TypesInfo.ObjectOf(id).(*types.Const)
+	if !ok {
+		return false
+	}
+	return strings.HasPrefix(cnst.Type().String(), "untyped")
 }
 
 var constIdentNames = map[string]struct{}{
