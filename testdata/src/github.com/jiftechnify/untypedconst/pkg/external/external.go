@@ -5,6 +5,9 @@ type ExString string
 const (
 	ExStr ExString = "ex"
 )
+const (
+	UntypedStr = "untyped"
+)
 
 type ExInt int
 

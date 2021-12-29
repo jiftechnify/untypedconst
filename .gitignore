@@ -1,5 +1,5 @@
 parse_sample
-pkg
+/pkg
 plugin
 .golangci.yml
 *.so
