@@ -4,12 +4,13 @@ import (
 	"github.com/jiftechnify/untypedconst/pkg/external"
 )
 
-func takesExString(s external.ExString)   {}
-func takesExInt(i external.ExInt)         {}
-func takesExFloat(f external.ExFloat)     {}
-func takesExComplex(c external.ExComplex) {}
-func takesExRune(r external.ExRune)       {}
-func takesExBool(b external.ExBool)       {}
+func takesExString(s external.ExString)      {}
+func takesExStrings(ss ...external.ExString) {}
+func takesExInt(i external.ExInt)            {}
+func takesExFloat(f external.ExFloat)        {}
+func takesExComplex(c external.ExComplex)    {}
+func takesExRune(r external.ExRune)          {}
+func takesExBool(b external.ExBool)          {}
 func takesBasicType(s string, i int, f float64, c complex128, r rune, b bool)
 
 const (
@@ -31,6 +32,12 @@ func Call() {
 	takesExString("hoge")              // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExString"`
 	takesExString("fug" + "a")         // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExString"`
 	takesExString(external.UntypedStr) // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExString"`
+
+	takesExStrings(external.ExString("hoge"), external.ExString("fuga"))
+	takesExStrings(
+		"hoge", // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExString"`
+		"fuga", // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExString"`
+	)
 
 	// no warning for untyped const passed as "external & private" defined type
 	external.TakesPrivExString("priv")
