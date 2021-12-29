@@ -1,4 +1,4 @@
-package nakedliteral_test
+package untypedconst_test
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-module github.com/jiftechnify/nakedliteral
+module github.com/jiftechnify/untypedconst
 
 go 1.16
 

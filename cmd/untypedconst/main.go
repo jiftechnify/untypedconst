@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/jiftechnify/nakedliteral"
+	"github.com/jiftechnify/untypedconst"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
 func main() {
-	singlechecker.Main(nakedliteral.Analyzer)
+	singlechecker.Main(untypedconst.Analyzer)
 }

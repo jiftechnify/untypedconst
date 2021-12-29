@@ -1,4 +1,4 @@
-package nakedliteral
+package untypedconst
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 )
 
 var Analyzer = &analysis.Analyzer{
-	Name:     "nakedliteral",
-	Doc:      "checks if naked (untyped) literal is used as value of Defined Type",
+	Name:     "untypedconst",
+	Doc:      "checks if an untyped constant expressions is used as a value of Defined Type",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
