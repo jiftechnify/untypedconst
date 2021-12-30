@@ -3,6 +3,7 @@ package untypedconst
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"log"
 	"strings"
@@ -28,6 +29,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		(*ast.SendStmt)(nil),
 		(*ast.CompositeLit)(nil),
 		(*ast.IndexExpr)(nil),
+		(*ast.GenDecl)(nil),
 	}
 
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
@@ -46,6 +48,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		case *ast.IndexExpr:
 			processIndexExpr(pass, n)
+
+		case *ast.GenDecl:
+			processGenDecl(pass, n)
 		}
 	})
 	return nil, nil
@@ -88,21 +93,36 @@ func processIndexExpr(pass *analysis.Pass, idx *ast.IndexExpr) {
 	checkAndReport(pass, idx.Index, "using untyped constant for indexing the value whose key type is defined type %q")
 }
 
+func processGenDecl(pass *analysis.Pass, decl *ast.GenDecl) {
+	// check `var` only
+	if decl.Tok != token.VAR {
+		return
+	}
+	for _, spec := range decl.Specs {
+		valSpec, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for _, val := range valSpec.Values {
+			checkAndReport(pass, val, "assigning untyped constant to variable of defined type %q")
+		}
+	}
+}
+
 // check if the expression is target of warning, and report problems.
 //
 // `msgfmt` MUST contain exact one format specifier for string(`%s` or `%q`)
 func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
-	// no probrem if expr is not constant expression.
+	// check if the expr is an untyped constant expression.
 	if pass.TypesInfo.Types[expr].Value == nil {
 		return
 	}
-	// no probrem if expr is not untyped.
 	if !isUntypedConstExpr(pass, expr) {
 		return
 	}
 
+	// check if the inferred type of the expr is a defined type and its underlying type is basic type.
 	inferredType := pass.TypesInfo.Types[expr].Type
-
 	namedTyp, isNamed := inferredType.(*types.Named)
 	if !isNamed {
 		return
@@ -111,7 +131,7 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 		return
 	}
 
-	// expr is target of warning if the declared type of expr is *not* "external package private type"
+	// no problem if the inferred type of the expr is "external private type", so exclude such cases.
 	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == pass.Pkg.Path() {
 		pass.Report(analysis.Diagnostic{
 			Pos:     expr.Pos(),
