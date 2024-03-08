@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+    
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        
+      - name: Run tests
+        run: go test -v ./...
+
+  typos:
+    name: Detect typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run typos
+        uses: crate-ci/typos@v1.19.0
