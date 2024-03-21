@@ -16,7 +16,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "untypedconst",
-	Doc:      "checks that untyped constant expressions are used as a values of defined type",
+	Doc:      "Checks that untyped constant expressions are used as values of a defined type",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
