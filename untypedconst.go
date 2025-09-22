@@ -29,6 +29,8 @@ func run(pass *analysis.Pass) (any, error) {
 		(*ast.CompositeLit)(nil),
 		(*ast.IndexExpr)(nil),
 		(*ast.GenDecl)(nil),
+		(*ast.IfStmt)(nil),
+		(*ast.SwitchStmt)(nil),
 	}
 
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
@@ -50,6 +52,12 @@ func run(pass *analysis.Pass) (any, error) {
 
 		case *ast.GenDecl:
 			processGenDecl(pass, n)
+
+		case *ast.IfStmt:
+			processIfStmt(pass, n)
+
+		case *ast.SwitchStmt:
+			processSwitchStmt(pass, n)
 		}
 	})
 	return nil, nil
@@ -104,6 +112,37 @@ func processGenDecl(pass *analysis.Pass, decl *ast.GenDecl) {
 		}
 		for _, val := range valSpec.Values {
 			checkAndReport(pass, val, "assigning untyped constant to variable of defined type %q")
+		}
+	}
+}
+
+func processIfStmt(pass *analysis.Pass, ifStmt *ast.IfStmt) {
+	// for all comparisons in the `if` statement's condition,
+	// check whether an untyped const is compared to an expression whose type is a defined type
+	for n := range ast.Preorder(ifStmt.Cond) {
+		binExpr, ok := n.(*ast.BinaryExpr)
+		if !ok {
+			continue
+		}
+		if _, isRelOp := relOpTokens[binExpr.Op.String()]; !isRelOp {
+			continue
+		}
+
+		checkAndReport(pass, binExpr.X, "comparing untyped constant to expression of defined type %q")
+		checkAndReport(pass, binExpr.Y, "comparing untyped constant to expression of defined type %q")
+	}
+}
+
+func processSwitchStmt(pass *analysis.Pass, swStmt *ast.SwitchStmt) {
+	// check whether an untyped const is matched with a scrutinee of defined type
+	for _, s := range swStmt.Body.List {
+		caseClause, ok := s.(*ast.CaseClause)
+		if !ok {
+			continue
+		}
+
+		for _, expr := range caseClause.List {
+			checkAndReport(pass, expr, "matching untyped constant with expression of defined type %q")
 		}
 	}
 }
@@ -165,7 +204,7 @@ func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
 
 	case *ast.BinaryExpr:
 		// "A constant comparison always yields an untyped boolean constant", as stated in the lang spec.
-		if _, isComparison := comparisonTokens[e.Op.String()]; isComparison {
+		if _, isComparison := relOpTokens[e.Op.String()]; isComparison {
 			return true
 		}
 		// `expr` is other than comparison. In this case, if both operands are untyped, entire expression is also untyped.
@@ -215,7 +254,7 @@ var constIdentNames = map[string]struct{}{
 	"iota":  {},
 }
 
-var comparisonTokens = map[string]struct{}{
+var relOpTokens = map[string]struct{}{
 	"==": {},
 	"!=": {},
 	"<":  {},
