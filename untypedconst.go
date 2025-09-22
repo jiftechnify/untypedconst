@@ -1,7 +1,6 @@
 package untypedconst
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -133,11 +132,7 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 
 	// no problem if the inferred type of the expr is "external private type", so exclude such cases.
 	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == pass.Pkg.Path() {
-		pass.Report(analysis.Diagnostic{
-			Pos:     expr.Pos(),
-			End:     expr.End(),
-			Message: fmt.Sprintf(msgfmt, inferredType.String()),
-		})
+		pass.ReportRangef(expr, msgfmt, inferredType.String())
 	}
 }
 
