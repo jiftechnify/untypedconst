@@ -4,14 +4,15 @@ import (
 	"github.com/jiftechnify/untypedconst/pkg/external"
 )
 
-func takesExString(s external.ExString)      {}
-func takesExStrings(ss ...external.ExString) {}
-func takesExInt(i external.ExInt)            {}
-func takesExFloat(f external.ExFloat)        {}
-func takesExComplex(c external.ExComplex)    {}
-func takesExRune(r external.ExRune)          {}
-func takesExBool(b external.ExBool)          {}
-func takesBasicType(s string, i int, f float64, c complex128, r rune, b bool)
+func takesExString(s external.ExString)                                       {}
+func takesExStrings(ss ...external.ExString)                                  {}
+func takesExInt(i external.ExInt)                                             {}
+func takesExFloat(f external.ExFloat)                                         {}
+func takesExComplex(c external.ExComplex)                                     {}
+func takesExRune(r external.ExRune)                                           {}
+func takesExBool(b external.ExBool)                                           {}
+func takesBasicType(s string, i int, f float64, c complex128, r rune, b bool) {}
+func takesGeneric[T any](v T)                                                 {}
 
 const (
 	one = iota + 1
@@ -73,4 +74,8 @@ func Call() {
 	takesExBool("fug"+"a" == "fuga") // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExBool"`
 
 	takesBasicType("a", 1, 1.0, complex(1.0, 2.0), 'a', true)
+
+	takesGeneric[int](1)
+	takesGeneric[external.ExInt](external.ExInt(1))
+	takesGeneric[external.ExInt](1) // want `passing untyped constant to parameter of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExInt"`
 }
