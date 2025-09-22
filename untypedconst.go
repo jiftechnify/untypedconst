@@ -1,7 +1,6 @@
 package untypedconst
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -21,7 +20,7 @@ var Analyzer = &analysis.Analyzer{
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
-func run(pass *analysis.Pass) (interface{}, error) {
+func run(pass *analysis.Pass) (any, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	nodeFilter := []ast.Node{
 		(*ast.CallExpr)(nil),
@@ -132,22 +131,17 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 	}
 
 	// no problem if the inferred type of the expr is "external private type", so exclude such cases.
-	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == pass.Pkg.Path() {
-		pass.Report(analysis.Diagnostic{
-			Pos:     expr.Pos(),
-			End:     expr.End(),
-			Message: fmt.Sprintf(msgfmt, inferredType.String()),
-		})
+	if isExternalPrivateType(pass, namedTyp) {
+		return
 	}
+
+	pass.ReportRangef(expr, msgfmt, inferredType.String())
 }
 
 // check if `expr` is untyped.
 // precondition: `expr` is constant expression (i.e. has constant value).
 func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
-	// unwrap all parentheses
-	unwrapped := unwrapParens(expr)
-
-	switch e := unwrapped.(type) {
+	switch e := ast.Unparen(expr).(type) {
 	case *ast.BasicLit:
 		// Naked basic literals are untyped const expr.
 		return true
@@ -206,17 +200,6 @@ func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
 	}
 }
 
-func unwrapParens(expr ast.Expr) ast.Expr {
-	currExpr := expr
-	for {
-		paren, isParenExpr := currExpr.(*ast.ParenExpr)
-		if !isParenExpr {
-			return currExpr
-		}
-		currExpr = paren.X
-	}
-}
-
 // Check if `id` stands for an untyped constant.
 func isUntypedConstIdent(pass *analysis.Pass, id *ast.Ident) bool {
 	cnst, ok := pass.TypesInfo.ObjectOf(id).(*types.Const)
@@ -245,4 +228,8 @@ var builtInsAboutComplex = map[string]struct{}{
 	"complex": {},
 	"real":    {},
 	"imag":    {},
+}
+
+func isExternalPrivateType(pass *analysis.Pass, typ *types.Named) bool {
+	return !typ.Obj().Exported() && typ.Obj().Pkg().Path() != pass.Pkg.Path()
 }
