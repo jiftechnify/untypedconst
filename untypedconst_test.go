@@ -7,7 +7,19 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
+var pkgs = []string{
+	"github.com/...",
+	"callexpr",
+	"sendstmt",
+	"returnstmt",
+	"compositelit",
+	"indexexpr",
+	"gendecl",
+	"ifstmt",
+	"switchstmt",
+}
+
 func TestAll(t *testing.T) {
 	testdata := analysistest.TestData()
-	analysistest.Run(t, testdata, untypedconst.Analyzer, "github.com/...", "callexpr", "sendstmt", "returnstmt", "compositelit", "indexexpr", "gendecl")
+	analysistest.Run(t, testdata, untypedconst.Analyzer, pkgs...)
 }
