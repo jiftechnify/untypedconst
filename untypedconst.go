@@ -131,9 +131,11 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 	}
 
 	// no problem if the inferred type of the expr is "external private type", so exclude such cases.
-	if namedTyp.Obj().Exported() || namedTyp.Obj().Pkg().Path() == pass.Pkg.Path() {
-		pass.ReportRangef(expr, msgfmt, inferredType.String())
+	if isExternalPrivateType(pass, namedTyp) {
+		return
 	}
+
+	pass.ReportRangef(expr, msgfmt, inferredType.String())
 }
 
 // check if `expr` is untyped.
@@ -226,4 +228,8 @@ var builtInsAboutComplex = map[string]struct{}{
 	"complex": {},
 	"real":    {},
 	"imag":    {},
+}
+
+func isExternalPrivateType(pass *analysis.Pass, typ *types.Named) bool {
+	return !typ.Obj().Exported() && typ.Obj().Pkg().Path() != pass.Pkg.Path()
 }
