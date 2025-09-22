@@ -144,10 +144,7 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 // check if `expr` is untyped.
 // precondition: `expr` is constant expression (i.e. has constant value).
 func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
-	// unwrap all parentheses
-	unwrapped := unwrapParens(expr)
-
-	switch e := unwrapped.(type) {
+	switch e := ast.Unparen(expr).(type) {
 	case *ast.BasicLit:
 		// Naked basic literals are untyped const expr.
 		return true
@@ -203,17 +200,6 @@ func isUntypedConstExpr(pass *analysis.Pass, expr ast.Expr) bool {
 		// All other types of expression (index, key-value, slice, star) can't appear in const expr.
 		log.Printf("unexpected node type: %T (node: %+v)", e, e)
 		return false
-	}
-}
-
-func unwrapParens(expr ast.Expr) ast.Expr {
-	currExpr := expr
-	for {
-		paren, isParenExpr := currExpr.(*ast.ParenExpr)
-		if !isParenExpr {
-			return currExpr
-		}
-		currExpr = paren.X
 	}
 }
 
