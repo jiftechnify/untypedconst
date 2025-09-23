@@ -28,6 +28,6 @@ func AssignStmtInFor() {
 	}
 	for exInt = external.ExInt(0); exInt < external.ExInt(10); exInt++ {
 	}
-	for exInt = 0; exInt < 10; exInt++ { // want `assigning untyped constant to variable of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExInt"`
+	for exInt = 0; ; exInt++ { // want `assigning untyped constant to variable of defined type "github.com/jiftechnify/untypedconst/pkg/external.ExInt"`
 	}
 }
