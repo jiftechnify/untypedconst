@@ -4,7 +4,10 @@ go 1.24.0
 
 toolchain go1.24.2
 
-require golang.org/x/tools v0.37.0
+require (
+	github.com/golangci/plugin-module-register v0.1.2
+	golang.org/x/tools v0.37.0
+)
 
 require (
 	golang.org/x/mod v0.28.0 // indirect
