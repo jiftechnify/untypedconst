@@ -14,6 +14,9 @@ go install github.com/jiftechnify/untypedconst/cmd/untypedconst@latest
 go vet -vettool=$(which untypedconst) ./...
 ```
 
+<details>
+<summary>Run as a golangci-lint's custom linter</summary>
+
 ### Run as a `golangci-lint`'s custom linter 
 
 You can also run **untypedconst** as a custom linter of [golangci-lint](https://golangci-lint.run/) with the following steps.
@@ -32,12 +35,42 @@ Please refer to [the official document](https://golangci-lint.run/docs/plugins/m
 2. Run `golangci-lint custom` to build a custom `golangci-lint` binary with **untypedconst** included as a plugin.
     - By default, the output path of the binary is `./custom-gcl`. You can change it by specifying `destination` field in `.custom-gcl.yml`. 
 
-3. Run the custom `golangci-lint` executable against your codebase:
+3. Add lines of configuration to your `.golangci.yml` to enable **untypedconst**:
+
+    ```yaml
+    # for golangci-lint v2.x
+    version: "2"
+
+    linters:
+      enable:
+        - untypedconst
+
+      settings:
+        custom:
+          untypedconst:
+            type: "module"
+            description: "Detects suspicious usage of untyped constants"
+    ```
+
+    ```yaml
+    # for golangci-lint v1.x
+    linters:
+      enable:
+        - untypedconst
+
+    linters-settings:
+      custom:
+        untypedconst:
+          type: "module"
+          description: "Detects suspicious usage of untyped constants"
+    ```
+
+4. Run the custom `golangci-lint` executable against your codebase:
 
     ```bash
     ./custom-gcl run ./...
     ```
-
+</details>
 
 ## Motivation
 
