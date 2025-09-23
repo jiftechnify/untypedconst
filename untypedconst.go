@@ -29,6 +29,7 @@ func run(pass *analysis.Pass) (any, error) {
 		(*ast.CompositeLit)(nil),
 		(*ast.IndexExpr)(nil),
 		(*ast.GenDecl)(nil),
+		(*ast.AssignStmt)(nil),
 		(*ast.IfStmt)(nil),
 		(*ast.SwitchStmt)(nil),
 	}
@@ -52,6 +53,9 @@ func run(pass *analysis.Pass) (any, error) {
 
 		case *ast.GenDecl:
 			processGenDecl(pass, n)
+
+		case *ast.AssignStmt:
+			processAssignStmt(pass, n)
 
 		case *ast.IfStmt:
 			processIfStmt(pass, n)
@@ -113,6 +117,16 @@ func processGenDecl(pass *analysis.Pass, decl *ast.GenDecl) {
 		for _, val := range valSpec.Values {
 			checkAndReport(pass, val, "assigning untyped constant to variable of defined type %q")
 		}
+	}
+}
+
+func processAssignStmt(pass *analysis.Pass, assign *ast.AssignStmt) {
+	// check `=` only
+	if assign.Tok != token.ASSIGN {
+		return
+	}
+	for _, expr := range assign.Rhs {
+		checkAndReport(pass, expr, "assigning untyped constant to variable of defined type %q")
 	}
 }
 
