@@ -9,13 +9,14 @@ import (
 
 var pkgs = []string{
 	"github.com/...",
+	"assignstmt",
 	"callexpr",
-	"sendstmt",
-	"returnstmt",
 	"compositelit",
-	"indexexpr",
 	"gendecl",
 	"ifstmt",
+	"indexexpr",
+	"returnstmt",
+	"sendstmt",
 	"switchstmt",
 }
 
