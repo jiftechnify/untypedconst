@@ -30,6 +30,7 @@ func run(pass *analysis.Pass) (any, error) {
 		(*ast.IndexExpr)(nil),
 		(*ast.GenDecl)(nil),
 		(*ast.AssignStmt)(nil),
+		(*ast.ForStmt)(nil),
 		(*ast.IfStmt)(nil),
 		(*ast.SwitchStmt)(nil),
 	}
@@ -56,6 +57,9 @@ func run(pass *analysis.Pass) (any, error) {
 
 		case *ast.AssignStmt:
 			processAssignStmt(pass, n)
+
+		case *ast.ForStmt:
+			processForStmt(pass, n)
 
 		case *ast.IfStmt:
 			processIfStmt(pass, n)
@@ -130,21 +134,14 @@ func processAssignStmt(pass *analysis.Pass, assign *ast.AssignStmt) {
 	}
 }
 
-func processIfStmt(pass *analysis.Pass, ifStmt *ast.IfStmt) {
-	// for all comparisons in the `if` statement's condition,
-	// check whether an untyped const is compared to an expression whose type is a defined type
-	for n := range ast.Preorder(ifStmt.Cond) {
-		binExpr, ok := n.(*ast.BinaryExpr)
-		if !ok {
-			continue
-		}
-		if _, isRelOp := relOpTokens[binExpr.Op.String()]; !isRelOp {
-			continue
-		}
+func processForStmt(pass *analysis.Pass, forStmt *ast.ForStmt) {
+	// check all comparisons in the `for` statement's condition clause
+	checkComparisonsUnderNode(pass, forStmt.Cond)
+}
 
-		checkAndReport(pass, binExpr.X, "comparing untyped constant to expression of defined type %q")
-		checkAndReport(pass, binExpr.Y, "comparing untyped constant to expression of defined type %q")
-	}
+func processIfStmt(pass *analysis.Pass, ifStmt *ast.IfStmt) {
+	// check all comparisons in the `if` statement's condition clause
+	checkComparisonsUnderNode(pass, ifStmt.Cond)
 }
 
 func processSwitchStmt(pass *analysis.Pass, swStmt *ast.SwitchStmt) {
@@ -189,6 +186,27 @@ func checkAndReport(pass *analysis.Pass, expr ast.Expr, msgfmt string) {
 	}
 
 	pass.ReportRangef(expr, msgfmt, inferredType.String())
+}
+
+// for all binary expressions under `root`, if it is comparison, check both operands.
+// no-op if `root` is nil.
+func checkComparisonsUnderNode(pass *analysis.Pass, root ast.Node) {
+	if root == nil {
+		return
+	}
+
+	for n := range ast.Preorder(root) {
+		binExpr, ok := n.(*ast.BinaryExpr)
+		if !ok {
+			continue
+		}
+		if _, isRelOp := relOpTokens[binExpr.Op.String()]; !isRelOp {
+			continue
+		}
+
+		checkAndReport(pass, binExpr.X, "comparing untyped constant to expression of defined type %q")
+		checkAndReport(pass, binExpr.Y, "comparing untyped constant to expression of defined type %q")
+	}
 }
 
 // check if `expr` is untyped.
@@ -268,6 +286,7 @@ var constIdentNames = map[string]struct{}{
 	"iota":  {},
 }
 
+// Binary comparison operators, aka `rep_op` in the Go lang spec
 var relOpTokens = map[string]struct{}{
 	"==": {},
 	"!=": {},
