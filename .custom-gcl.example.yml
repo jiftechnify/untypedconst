@@ -1,0 +1,5 @@
+version: v2.5.0
+plugins:
+  - module: "github.com/jiftechnify/untypedconst"
+    import: "github.com/jiftechnify/untypedconst/cmd/gciplugin"
+    version: "latest"
