@@ -12,6 +12,7 @@ var pkgs = []string{
 	"assignstmt",
 	"callexpr",
 	"compositelit",
+	"forstmt",
 	"gendecl",
 	"ifstmt",
 	"indexexpr",
